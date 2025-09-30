@@ -1,0 +1,84 @@
+---
+- name: Ensure snapd is installed
+  ansible.builtin.apt:
+    name: snapd
+    state: present
+
+- name: Check if kubectl is already installed
+  ansible.builtin.command: which kubectl
+  register: kubectl_check
+  changed_when: false
+  ignore_errors: yes
+
+- name: Install kubectl via snap (only if not already installed)
+  ansible.builtin.snap:
+    name: kubectl
+    classic: yes
+    state: present
+  when: kubectl_check.rc != 0
+
+- name: Check if kubeconfig exists
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+  register: kubeconfig_check
+
+- name: Display kubeconfig status
+  ansible.builtin.debug:
+    msg: "Kubeconfig exists: {{ kubeconfig_check.stat.exists }}"
+
+- name: Verify kubectl installation (skip cluster check if no kubeconfig)
+  ansible.builtin.command: kubectl version --client
+  register: kubectl_version
+  changed_when: false
+  ignore_errors: yes
+
+- name: Display kubectl client info
+  ansible.builtin.debug:
+    msg: "Kubectl client version checked"
+
+- name: Ensure python3-pip is installed
+  ansible.builtin.apt:
+    name: python3-pip
+    state: present
+
+- name: Install Kubernetes Python modules
+  ansible.builtin.pip:
+    name: "{{ item }}"
+    executable: pip3
+    state: present
+  loop:
+    - kubernetes
+    - kubernetes-validate
+    - jsonschema
+
+- name: Verify Kubernetes cluster access (only if kubeconfig exists)
+  ansible.builtin.command: kubectl cluster-info
+  register: cluster_info
+  changed_when: false
+  ignore_errors: yes
+  when: kubeconfig_check.stat.exists
+
+- name: Create Kubernetes namespaces (only if kubeconfig exists)
+  kubernetes.core.k8s:
+    state: present
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+  loop:
+    - prod
+    - monitoring
+    - security
+    - logging
+  become: no
+  when: kubeconfig_check.stat.exists
+
+- name: Verify namespaces creation (only if kubeconfig exists)
+  ansible.builtin.command: kubectl get namespaces
+  register: namespaces_list
+  changed_when: false
+  ignore_errors: yes
+  when: kubeconfig_check.stat.exists
+
+- name: Display namespaces status
+  ansible.builtin.debug:
+    msg: "{{ 'Namespaces created/verified' if kubeconfig_check.stat.exists and namespaces_list is defined and namespaces_list.rc == 0 else 'Cannot create namespaces (no kubeconfig)' }}"

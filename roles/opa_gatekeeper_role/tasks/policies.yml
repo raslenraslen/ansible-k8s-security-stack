@@ -1,0 +1,39 @@
+---
+# Définition des variables pour les chemins de fichiers
+- name: Set variables for file paths
+  ansible.builtin.set_fact:
+    nodeport_template: "{{ role_path }}/files/policies/nodeport/k8sservicenodeportforbidden.yaml"
+    nodeport_constraint: "{{ role_path }}/files/policies/nodeport/forbid-nodeport-services.yaml"
+    nodeport_test_file: "{{ role_path }}/files/policies/nodeport/test-nodeport.yaml"
+
+# NodePort Policy ONLY - IMAGES REMOVED
+- name: Deploy NodePort ConstraintTemplate
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ nodeport_template }}"
+
+- name: Deploy NodePort Constraint
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ nodeport_constraint }}"
+
+- name: Test NodePort Constraint (Expected to fail)
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ nodeport_test_file }}"
+  register: nodeport_test_result
+  ignore_errors: true
+
+- name: Verify NodePort Policy works (must be blocked)
+  ansible.builtin.assert:
+    that:
+      - nodeport_test_result.failed
+      - "'Forbidden' in nodeport_test_result.msg"
+    success_msg: "✅ NodePort policy successfully blocked the service (as expected)."
+    fail_msg: "❌ NodePort service was not blocked. Check Gatekeeper or policy syntax."
+
+- name: Clean up NodePort test
+  kubernetes.core.k8s:
+    state: absent
+    src: "{{ nodeport_test_file }}"
+  ignore_errors: true

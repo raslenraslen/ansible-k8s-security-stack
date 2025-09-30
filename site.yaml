@@ -1,5 +1,14 @@
 ---
-- name: Déployer HashiCorp Vault
+- name: 🛠️ PRÉPARATION DE L'ENVIRONNEMENT
+  hosts: localhost
+  become: yes
+  gather_facts: true
+  tags: prerequisites  
+  
+  roles:
+    - prerequisites_role
+
+- name: 🔐 DÉPLOIEMENT HASHICORP VAULT
   hosts: controllers
   become: yes
   gather_facts: true
@@ -7,6 +16,16 @@
     vault_force_reinit: false
   environment:
     SHELL: /bin/bash
+  tags: vault  
   
   roles:
     - vault_role
+
+- name: 🛡️ DÉPLOIEMENT OPA GATEKEEPER
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: gatekeeper  
+  
+  roles:
+    - opa_gatekeeper_role

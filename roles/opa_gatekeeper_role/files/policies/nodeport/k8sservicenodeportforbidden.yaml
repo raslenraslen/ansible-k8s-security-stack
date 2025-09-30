@@ -1,0 +1,19 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sservicenodeportforbidden
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sServiceNodePortForbidden
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sservicenodeportforbidden
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Service"
+          input.review.object.spec.type == "NodePort"
+          msg := "Usage of Service type NodePort is forbidden by policy"
+        }

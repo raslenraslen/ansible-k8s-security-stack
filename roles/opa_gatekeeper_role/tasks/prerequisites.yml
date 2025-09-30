@@ -1,0 +1,29 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+
+
+- name: Ensure python3-pip is installed
+  ansible.builtin.apt:
+    name: python3-pip
+    state: present
+
+- name: Install Kubernetes Python module
+  ansible.builtin.pip:
+    name: kubernetes
+    executable: pip3
+    state: present
+
+- name: Create Kubernetes namespaces (prod and monitoring)
+  kubernetes.core.k8s:
+    state: present
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+  loop:
+    - prod
+    - monitoring
+  become: no

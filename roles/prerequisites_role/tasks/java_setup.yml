@@ -1,0 +1,20 @@
+---
+- name: Install OpenJDK 17
+  ansible.builtin.apt:
+    name: openjdk-17-jre-headless
+    state: present
+
+- name: Set JAVA_HOME for raslen user
+  ansible.builtin.lineinfile:
+    path: "/home/raslen/.bashrc"
+    line: 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64'
+    create: true
+    insertafter: EOF
+    regexp: '^export JAVA_HOME='
+  become: no
+
+- name: Configure JDK 17 as default Java version
+  ansible.builtin.shell: |
+    update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+  args:
+    creates: /etc/alternatives/java

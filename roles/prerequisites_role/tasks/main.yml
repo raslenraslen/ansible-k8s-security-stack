@@ -1,0 +1,12 @@
+---
+- name: Include system setup tasks
+  ansible.builtin.include_tasks: system_setup.yml
+
+- name: Include Kubernetes tools setup
+  ansible.builtin.include_tasks: kubernetes_tools.yml
+
+- name: Include Java setup
+  ansible.builtin.include_tasks: java_setup.yml
+
+- name: Include Docker setup
+  ansible.builtin.include_tasks: docker_setup.yml

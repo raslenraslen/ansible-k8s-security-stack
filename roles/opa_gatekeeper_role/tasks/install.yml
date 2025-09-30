@@ -1,0 +1,29 @@
+---
+- name: Apply Gatekeeper manifest from official URL
+  ansible.builtin.command: >
+    kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/release-3.14/deploy/gatekeeper.yaml
+  register: gatekeeper_apply
+  changed_when: "'configured' in gatekeeper_apply.stdout or 'created' in gatekeeper_apply.stdout"
+
+- name: Wait for Gatekeeper webhooks to be ready (optional, for stability)
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Get Gatekeeper pods
+  ansible.builtin.command: kubectl get pods -n gatekeeper-system
+  register: get_pods_output
+  changed_when: false
+
+- name: Get Gatekeeper deployments
+  ansible.builtin.command: kubectl get deployments -n gatekeeper-system
+  register: get_deployments_output
+  changed_when: false
+
+- name: Show Gatekeeper status
+  ansible.builtin.debug:
+    msg: |
+      ========= Gatekeeper Pods =========
+      {{ get_pods_output.stdout }}
+
+      ====== Gatekeeper Deployments =====
+      {{ get_deployments_output.stdout }}
