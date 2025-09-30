@@ -1,0 +1,12 @@
+---
+- name: Déployer HashiCorp Vault
+  hosts: controllers
+  become: yes
+  gather_facts: true
+  vars:
+    vault_force_reinit: false
+  environment:
+    SHELL: /bin/bash
+  
+  roles:
+    - vault_role

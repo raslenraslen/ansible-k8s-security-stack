@@ -1,0 +1,14 @@
+---
+- name: Restart vault service
+  ansible.builtin.systemd:
+    name: vault
+    state: restarted
+    enabled: yes
+
+- name: Auto unseal vault after restart
+  ansible.builtin.shell: |
+    sleep 10
+    VAULT_ADDR={{ vault_address }} vault operator unseal "{{ effective_unseal_key }}"
+  args:
+    chdir: "{{ vault_home_dir }}"
+  when: effective_unseal_key is defined and effective_unseal_key | length > 0

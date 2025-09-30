@@ -1,0 +1,117 @@
+---
+- name: Vérifier l'état actuel de Vault (initialisé/scellé) - Pré-initialisation
+  ansible.builtin.shell: |
+    VAULT_ADDR={{ vault_address }} vault status -format=json
+  args:
+    chdir: "{{ vault_home_dir }}"
+  register: pre_init_vault_status
+  changed_when: false
+  failed_when: pre_init_vault_status.rc > 2  # Autorise les codes 1 et 2
+
+- name: Déterminer l'état d'initialisation et de scellement de Vault - Pré-initialisation
+  ansible.builtin.set_fact:
+    vault_is_initialized: "{{ (pre_init_vault_status.rc == 0 and pre_init_vault_status.stdout | length > 0 and (pre_init_vault_status.stdout | from_json).initialized) | default(false) }}"
+    vault_is_sealed: "{{ (pre_init_vault_status.rc == 0 and pre_init_vault_status.stdout | length > 0 and (pre_init_vault_status.stdout | from_json).sealed) | default(true) }}"
+    existing_root_token: "{{ (pre_init_vault_status.rc == 0 and pre_init_vault_status.stdout | length > 0 and (pre_init_vault_status.stdout | from_json).root_token) | default(omit) }}"
+
+- name: DEBUG - Afficher l'état de Vault avant initialisation
+  ansible.builtin.debug:
+    msg: |
+      Vault Initialized: {{ vault_is_initialized }}
+      Vault Sealed: {{ vault_is_sealed }}
+  changed_when: false
+
+- name: Initialiser Vault (si non initialisé)
+  ansible.builtin.shell: |
+    VAULT_ADDR={{ vault_address }} vault operator init -key-shares=1 -key-threshold=1 -format=json
+  args:
+    chdir: "{{ vault_home_dir }}"
+  register: vault_init_output
+  when: not vault_is_initialized
+  retries: 3
+  delay: 5
+
+- name: DEBUG - Afficher le contenu complet de vault_init_output
+  ansible.builtin.debug:
+    var: vault_init_output
+  when: vault_init_output is defined
+
+- name: DEBUG - Afficher la clé d'unseal extraite de vault_init_output
+  ansible.builtin.debug:
+    msg: "Extracted Unseal Key from init: {{ (vault_init_output.stdout | from_json).unseal_keys_b64[0] }}"
+  when:
+    - vault_init_output is defined
+    - vault_init_output.stdout is defined and vault_init_output.stdout | length > 0
+    - (vault_init_output.stdout | from_json).unseal_keys_b64 is defined
+    - (vault_init_output.stdout | from_json).unseal_keys_b64 | length > 0
+
+- name: Mettre à jour la clé d'unseal et le root token si Vault a été initialisé PAR LE PLAYBOOK
+  ansible.builtin.set_fact:
+    effective_unseal_key: "{{ (vault_init_output.stdout | from_json).unseal_keys_b64[0] }}"
+    current_run_root_token: "{{ (vault_init_output.stdout | from_json).root_token }}"
+  when: vault_init_output is defined and vault_init_output.stdout is defined and vault_init_output.stdout | length > 0
+
+- name: DEBUG - Afficher la valeur finale de effective_unseal_key
+  ansible.builtin.debug:
+    msg: "Final effective_unseal_key (will be used for unseal): {{ effective_unseal_key }}"
+
+- name: Afficher le root token (DEV ONLY)
+  ansible.builtin.debug:
+    msg: "Vault Root Token (DEV ONLY): {{ current_run_root_token }}"
+  when: current_run_root_token is defined
+
+- name: Re-vérifier l'état de Vault (initialisé/scellé) juste avant unseal
+  ansible.builtin.shell: |
+    VAULT_ADDR={{ vault_address }} vault status -format=json
+  args:
+    chdir: "{{ vault_home_dir }}"
+  register: recheck_vault_status_before_unseal
+  changed_when: false
+  failed_when: recheck_vault_status_before_unseal.rc > 2
+
+- name: Mettre à jour l'état de scellement pour la tâche d'unseal
+  ansible.builtin.set_fact:
+    vault_is_sealed: "{{ (recheck_vault_status_before_unseal.rc == 0 and recheck_vault_status_before_unseal.stdout | length > 0 and (recheck_vault_status_before_unseal.stdout | from_json).sealed) | default(true) }}"
+
+- name: DEBUG - Afficher la valeur de vault_is_sealed juste avant l'unseal
+  ansible.builtin.debug:
+    msg: "vault_is_sealed is: {{ vault_is_sealed }}"
+
+- name: Unseal Vault (si scellé)
+  ansible.builtin.shell: |
+    VAULT_ADDR={{ vault_address }} vault operator unseal "{{ effective_unseal_key }}"
+  args:
+    chdir: "{{ vault_home_dir }}"
+  register: vault_unseal_output
+  when:
+    - vault_is_sealed | bool
+    - effective_unseal_key is defined and effective_unseal_key | length > 0
+  failed_when: >
+    vault_unseal_output.rc != 0 and
+    'unsealed' not in vault_unseal_output.stdout and
+    'already unsealed' not in vault_unseal_output.stderr
+  changed_when: "'unsealed' in vault_unseal_output.stdout"
+
+- name: Vérification finale que Vault est accessible et non scellé
+  ansible.builtin.shell: |
+    VAULT_ADDR={{ vault_address }} vault status -format=json
+  args:
+    chdir: "{{ vault_home_dir }}"
+  register: ultimate_vault_status
+  changed_when: false
+  failed_when: ultimate_vault_status.rc > 2
+
+- name: Message final pour le déploiement de Vault
+  ansible.builtin.debug:
+    msg:
+      Root_Token: "{{ current_run_root_token }}"
+      Unseal_Key: "{{ effective_unseal_key }}"
+      UI_Web: "{{ vault_address | default('http://' + ansible_host + ':8200') }}/ui"
+      Adresse_API: "http://{{ ansible_host }}:8200"
+      
+  when: current_run_root_token is defined
+
+- name: Message si Vault était déjà initialisé
+  ansible.builtin.debug:
+    msg: "Vault était déjà initialisé - Utilisez vos tokens existants - UI: {{ vault_address }}/ui"
+  when: vault_is_initialized and current_run_root_token is not defined

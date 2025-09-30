@@ -1,0 +1,22 @@
+storage "raft" {
+  path    = "{{ vault_data_path }}"
+  node_id = "ansible-vault-server-01"
+}
+
+listener "tcp" {
+  address     = "0.0.0.0:8200"
+  tls_disable = "true"
+}
+
+api_addr     = "{{ vault_address }}"
+cluster_addr = "http://{{ ansible_host }}:8201"
+
+ui = true
+log_level = "info"
+
+disable_mlock = true
+
+telemetry {
+  prometheus_retention_time = "24h"
+  disable_hostname = true
+}

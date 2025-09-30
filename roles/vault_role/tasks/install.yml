@@ -1,0 +1,54 @@
+---
+- name: Mise à jour et installation des prérequis du système
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  loop:
+    - unzip
+    - curl
+    - vim
+    - systemd
+    - jq
+
+- name: Nettoyer les paquets inutiles
+  ansible.builtin.apt:
+    autoremove: yes
+
+- name: Créer l'utilisateur système 'vault'
+  ansible.builtin.user:
+    name: "{{ vault_user }}"
+    home: "{{ vault_config_path }}"
+    shell: /bin/false
+    system: yes
+
+- name: Créer les répertoires de configuration et de données pour Vault
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: "{{ '0750' if item == vault_config_path or item == '/opt/vault' else '0700' }}"
+    recurse: yes
+  loop:
+    - "{{ vault_config_path }}"
+    - "/opt/vault"
+    - "{{ vault_data_path }}"
+
+- name: Télécharger et installer Vault
+  ansible.builtin.unarchive:
+    src: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_amd64.zip"
+    dest: "/usr/local/bin/"
+    remote_src: yes
+    creates: "/usr/local/bin/vault"
+  register: vault_download_status
+
+- name: S'assurer que le binaire Vault est exécutable
+  ansible.builtin.file:
+    path: "/usr/local/bin/vault"
+    mode: "0755"
+
+- name: Vérifier la version de Vault
+  ansible.builtin.command: vault --version
+  register: vault_version_check
+  changed_when: false

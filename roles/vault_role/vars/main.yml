@@ -1,0 +1,12 @@
+---
+vault_version: "1.15.4"
+vault_config_path: "/etc/vault.d"
+vault_data_path: "/opt/vault/data"
+vault_user: "vault"
+vault_group: "vault"
+vault_address: "http://{{ ansible_host }}:8200"
+vault_home_dir: "/home/{{ ansible_user }}"
+vault_force_reinit: false
+
+effective_unseal_key: "{{ unseal_key_extra_var | default('') }}"
+current_run_root_token: "{{ existing_root_token | default('root') }}"

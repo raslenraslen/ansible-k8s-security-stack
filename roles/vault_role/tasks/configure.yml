@@ -1,0 +1,56 @@
+---
+- name: Copier le fichier de configuration Vault (vault.hcl)
+  ansible.builtin.template:
+    src: "vault.hcl.j2"
+    dest: "{{ vault_config_path }}/vault.hcl"
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: "0640"
+
+- name: Copier le fichier de service Systemd pour Vault
+  ansible.builtin.template:
+    src: "vault.service.j2"
+    dest: "/etc/systemd/system/vault.service"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Recharger systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Arrêter le service Vault pour nettoyage (if vault_force_reinit is true)
+  ansible.builtin.systemd:
+    name: vault
+    state: stopped
+  ignore_errors: true
+  when: vault_force_reinit | bool
+
+- name: Nettoyer toutes les données de Vault (if vault_force_reinit is true)
+  ansible.builtin.file:
+    path: "{{ vault_data_path }}"
+    state: absent
+  when: vault_force_reinit | bool
+
+- name: Recréer le répertoire de données Vault après nettoyage
+  ansible.builtin.file:
+    path: "{{ vault_data_path }}"
+    state: directory
+    owner: "{{ vault_user }}"
+    group: "{{ vault_group }}"
+    mode: "0700"
+  when: vault_force_reinit | bool
+
+- name: Démarrer et activer le service Vault
+  ansible.builtin.systemd:
+    name: vault
+    state: started
+    enabled: yes
+
+- name: Attendre que Vault soit disponible
+  ansible.builtin.wait_for:
+    port: 8200
+    host: "{{ ansible_host }}"
+    state: started
+    timeout: 30
+    delay: 3
