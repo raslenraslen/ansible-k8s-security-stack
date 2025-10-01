@@ -8,6 +8,9 @@
     latest_image_template: "{{ role_path }}/files/policies/images/k8sdenyimagelatest.yaml"
     latest_image_constraint: "{{ role_path }}/files/policies/images/no-latest-images.yaml"
     latest_image_test_file: "{{ role_path }}/files/policies/images/test-latest-image.yaml"
+    no_privileged_template: "{{ role_path }}/files/policies/security/no-privileged-template.yaml"
+    no_privileged_constraint: "{{ role_path }}/files/policies/security/no-privileged-constraint.yaml"
+    no_privileged_test_file: "{{ role_path }}/files/policies/security/test-privileged-container.yaml"
 
 # NodePort Policy
 - name: Deploy NodePort ConstraintTemplate
@@ -71,4 +74,36 @@
   kubernetes.core.k8s:
     state: absent
     src: "{{ latest_image_test_file }}"
+  ignore_errors: true
+
+# No Privileged Containers Policy
+- name: Deploy No Privileged Containers ConstraintTemplate
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ no_privileged_template }}"
+
+- name: Deploy No Privileged Containers Constraint
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ no_privileged_constraint }}"
+
+- name: Test No Privileged Containers Constraint (Expected to fail)
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ no_privileged_test_file }}"
+  register: privileged_test_result
+  ignore_errors: true
+
+- name: Verify No Privileged Containers Policy works (must be blocked)
+  ansible.builtin.assert:
+    that:
+      - privileged_test_result.failed
+      - "'privileged' in privileged_test_result.msg"
+    success_msg: "✅ No Privileged Containers policy successfully blocked the deployment (as expected)."
+    fail_msg: "❌ Privileged container was not blocked. Check Gatekeeper or policy syntax."
+
+- name: Clean up No Privileged Containers test
+  kubernetes.core.k8s:
+    state: absent
+    src: "{{ no_privileged_test_file }}"
   ignore_errors: true
