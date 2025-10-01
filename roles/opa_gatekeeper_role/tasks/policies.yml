@@ -11,6 +11,9 @@
     no_privileged_template: "{{ role_path }}/files/policies/security/no-privileged-template.yaml"
     no_privileged_constraint: "{{ role_path }}/files/policies/security/no-privileged-constraint.yaml"
     no_privileged_test_file: "{{ role_path }}/files/policies/security/test-privileged-container.yaml"
+    limits_template: "{{ role_path }}/files/policies/limits/k8srequiredresources.yaml"
+    limits_constraint: "{{ role_path }}/files/policies/limits/require-limits.yaml"
+    limits_test_file: "{{ role_path }}/files/policies/limits/test-no-limits.yaml"
 
 # NodePort Policy
 - name: Deploy NodePort ConstraintTemplate
@@ -106,4 +109,44 @@
   kubernetes.core.k8s:
     state: absent
     src: "{{ no_privileged_test_file }}"
+  ignore_errors: true
+
+# Resource Limits Policy
+- name: Deploy Resource Limits ConstraintTemplate
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ limits_template }}"
+
+- name: Deploy Resource Limits Constraint
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ limits_constraint }}"
+
+- name: Clean up any existing test pod first
+  kubernetes.core.k8s:
+    kind: Pod
+    name: nginx-no-limits
+    namespace: prod
+    state: absent
+  ignore_errors: true
+
+- name: Test Resource Limits Constraint (Expected to fail)
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ limits_test_file }}"
+  register: limits_test_result
+  ignore_errors: true
+
+- name: Verify Resource Limits Policy works (must be blocked)
+  ansible.builtin.assert:
+    that:
+      - limits_test_result.failed
+      - "'must have CPU limits' in limits_test_result.msg or 'must have memory limits' in limits_test_result.msg"
+    success_msg: "✅ Resource Limits policy successfully blocked the pod (as expected)."
+    fail_msg: "❌ Pod without limits was not blocked. Check Gatekeeper or policy syntax."
+
+- name: Clean up Resource Limits test
+  kubernetes.core.k8s:
+    state: absent
+    src: "{{ limits_test_file }}"
   ignore_errors: true
