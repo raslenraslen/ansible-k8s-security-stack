@@ -5,8 +5,11 @@
     nodeport_template: "{{ role_path }}/files/policies/nodeport/k8sservicenodeportforbidden.yaml"
     nodeport_constraint: "{{ role_path }}/files/policies/nodeport/forbid-nodeport-services.yaml"
     nodeport_test_file: "{{ role_path }}/files/policies/nodeport/test-nodeport.yaml"
+    latest_image_template: "{{ role_path }}/files/policies/images/k8sdenyimagelatest.yaml"
+    latest_image_constraint: "{{ role_path }}/files/policies/images/no-latest-images.yaml"
+    latest_image_test_file: "{{ role_path }}/files/policies/images/test-latest-image.yaml"
 
-# NodePort Policy ONLY - IMAGES REMOVED
+# NodePort Policy
 - name: Deploy NodePort ConstraintTemplate
   kubernetes.core.k8s:
     state: present
@@ -36,4 +39,36 @@
   kubernetes.core.k8s:
     state: absent
     src: "{{ nodeport_test_file }}"
+  ignore_errors: true
+
+# Latest Image Policy
+- name: Deploy Latest Image ConstraintTemplate
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ latest_image_template }}"
+
+- name: Deploy Latest Image Constraint
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ latest_image_constraint }}"
+
+- name: Test Latest Image Constraint (Expected to fail)
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ latest_image_test_file }}"
+  register: latest_image_test_result
+  ignore_errors: true
+
+- name: Verify Latest Image Policy works (must be blocked)
+  ansible.builtin.assert:
+    that:
+      - latest_image_test_result.failed
+      - "'latest' in latest_image_test_result.msg"
+    success_msg: "✅ Latest image policy successfully blocked the deployment (as expected)."
+    fail_msg: "❌ Latest image deployment was not blocked. Check Gatekeeper or policy syntax."
+
+- name: Clean up Latest Image test
+  kubernetes.core.k8s:
+    state: absent
+    src: "{{ latest_image_test_file }}"
   ignore_errors: true
