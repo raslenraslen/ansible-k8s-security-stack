@@ -1,0 +1,3 @@
+---
+kube_prereq_packages: [curl, ca-certificates, apt-transport-https]
+kube_packages: [kubeadm, kubectl, kubelet]
