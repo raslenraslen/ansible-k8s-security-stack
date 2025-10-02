@@ -1,0 +1,62 @@
+# Fichier: roles/polaris_role/tasks/main.yml
+
+# --- Phase 1 : Préparation du Répertoire Helm ---
+- name: 1. Remove potentially broken old Helm repo reference
+  # Assure la propreté avant l'ajout, en cas de changement d'URL
+  ansible.builtin.command: helm repo remove {{ polaris_helm_repo_name }}
+  ignore_errors: true
+  changed_when: false
+
+- name: 2. Add the official Fairwinds Helm Repository
+  kubernetes.core.helm_repository:
+    name: "{{ polaris_helm_repo_name }}"
+    repo_url: "{{ polaris_helm_repo_url }}"
+    state: present
+
+- name: 3. Update Helm Repositories
+  ansible.builtin.command: helm repo update
+  changed_when: true
+
+# --- Phase 2 : Déploiement de Polaris ---
+- name: 4. Ensure the Polaris Namespace exists
+  kubernetes.core.k8s:
+    name: "{{ polaris_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: 5. Install or Upgrade Polaris Dashboard and Agent
+  kubernetes.core.helm:
+    name: polaris
+    chart_ref: "{{ polaris_helm_repo_name }}/polaris"
+    namespace: "{{ polaris_namespace }}"
+    create_namespace: false
+    state: present
+    release_values:
+      dashboard:
+        replicas: 1
+      healthChecks:
+        minimumStabilitySeconds: 60
+  register: polaris_helm_install
+
+# --- Phase 3 : Configuration de l'Accès UI (Port-Forward) ---
+- name: 6. Start port-forward for Polaris UI (port {{ polaris_ui_port }}:80) in background
+  ansible.builtin.shell: |
+    # Utilisation explicite du contexte Kubeadm
+    kubectl --context {{ polaris_cluster_context }} port-forward --address 0.0.0.0 svc/polaris-dashboard -n {{ polaris_namespace }} {{ polaris_ui_port }}:80 > /dev/null 2>&1 &
+    echo $! > /tmp/polaris_ui_pf_pid
+  args:
+    creates: /tmp/polaris_ui_pf_pid
+  changed_when: true
+  register: pf_polaris_output
+
+- name: 7. Wait briefly for the port-forward to establish
+  ansible.builtin.pause:
+    seconds: 5
+
+- name: 8. Display Polaris UI access info
+  ansible.builtin.debug:
+    msg: |
+      Polaris Dashboard is running!
+      Health Score for your cluster is now live at: http://127.0.0.1:{{ polaris_ui_port }}/
+      (Port-forward is running on PID: {{ pf_polaris_output.stdout }})

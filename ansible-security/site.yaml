@@ -41,3 +41,14 @@
   
   roles:
     - falco_role
+
+
+
+- name: ⭐ AUDIT DE CONFIGURATION K8S AVEC POLARIS
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: polaris
+
+  roles:
+    - polaris_role

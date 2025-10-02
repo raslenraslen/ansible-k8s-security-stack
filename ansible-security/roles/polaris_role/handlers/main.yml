@@ -1,0 +1,13 @@
+# Fichier: roles/polaris_role/handlers/main.yml
+
+- name: Kill Polaris port-forward process
+  ansible.builtin.shell: |
+    if [ -f /tmp/polaris_ui_pf_pid ]; then
+      kill $(cat /tmp/polaris_ui_pf_pid) || true
+      rm /tmp/polaris_ui_pf_pid
+    fi
+  args:
+    warn: false
+  changed_when: false
+  listen: "cleanup port-forwards"
+  when: inventory_hostname == 'localhost'
