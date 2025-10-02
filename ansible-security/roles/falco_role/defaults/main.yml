@@ -1,0 +1,6 @@
+---
+# Default variables for Falco deployment
+falco_namespace: falco
+discord_webhook_url: "REDACTED"
+falcosidekick_custom_fields: "environment:production\\,datacenter:paris"
+falcosidekick_ui_ip: "192.168.216.142"

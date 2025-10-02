@@ -1,0 +1,20 @@
+---
+- name: Démarrer le port-forward pour falco-falcosidekick-ui (port 2802) en arrière-plan
+  ansible.builtin.shell: |
+    kubectl -n {{ falco_namespace }} port-forward --address 0.0.0.0 svc/falco-falcosidekick-ui 2802:2802 > /dev/null 2>&1 &
+    echo $! > /tmp/falcosidekick_ui_pf_pid
+  args:
+    creates: /tmp/falcosidekick_ui_pf_pid
+  changed_when: true
+  register: pf_2802_output
+
+- name: Attendre un court instant pour que le port-forward de la UI s'établisse
+  ansible.builtin.pause:
+    seconds: 5
+
+- name: Message d'information pour la UI Falcosidekick
+  debug:
+    msg: |
+      La WebUI de Falcosidekick est accessible via :
+      http://{{ falcosidekick_ui_ip }}:2802/dashboard/
+      (Le port-forward est actif tant que le processus kubectl port-forward n'est pas terminé.)

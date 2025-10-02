@@ -1,0 +1,8 @@
+---
+- name: Créer le namespace Falco si ce n'est pas déjà fait
+  kubernetes.core.k8s:
+    name: "{{ falco_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    kubeconfig: "{{ ansible_user_dir }}/.kube/config"

@@ -29,3 +29,15 @@
   
   roles:
     - opa_gatekeeper_role
+
+
+
+
+- name: 🔍 DÉPLOIEMENT FALCO AVEC FALCOSIDEKICK
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  tags: falco
+  
+  roles:
+    - falco_role

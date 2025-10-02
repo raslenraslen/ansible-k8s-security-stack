@@ -1,0 +1,36 @@
+---
+- name: Ajouter le dépôt Helm de Falco Security
+  kubernetes.core.helm_repository:
+    name: falcosecurity
+    repo_url: https://falcosecurity.github.io/charts
+    state: present
+
+- name: Installer ou mettre à jour Falco avec Helm
+  kubernetes.core.helm:
+    name: falco
+    chart_ref: falcosecurity/falco
+    namespace: "{{ falco_namespace }}"
+    create_namespace: false
+    state: present
+    release_values:
+      falcosidekick:
+        enabled: true
+        webui:
+          enabled: false
+        config:
+          discord:
+            webhookurl: "{{ discord_webhook_url }}"
+          customfields: "{{ falcosidekick_custom_fields }}"
+      falco:
+        falco_rules_custom: |
+          - rule: Simple Warning Test
+            desc: This rule generates a 'Warning' alert for a specific command.
+            condition: evt.type=execve and proc.cmdline contains "falco-test-warning"
+            output: "Warning Test Alert: Command '%proc.cmdline' executed (Priority: %priority)"
+            priority: Warning
+            tags: [test, warning-test]
+  register: falco_helm_install
+
+- name: Afficher les informations d'installation de Helm
+  debug:
+    msg: "Installation de Falco Helm terminée. Détails : {{ falco_helm_install }}"

@@ -1,0 +1,28 @@
+---
+- name: Vérifier la présence de kubectl
+  command: kubectl version --client
+  register: kubectl_check
+  ignore_errors: true
+  changed_when: false
+  failed_when: "'Client Version:' not in kubectl_check.stdout"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/usr/local/bin:/usr/bin"
+
+- name: Afficher un message si kubectl n'est pas trouvé
+  fail:
+    msg: "kubectl n'est pas installé ou n'est pas dans le PATH. Veuillez l'installer et configurer votre kubeconfig."
+  when: kubectl_check.failed
+
+- name: Vérifier la presence de helm
+  command: helm version
+  register: helm_check
+  ignore_errors: true
+  changed_when: false
+  failed_when: "'Version:' not in helm_check.stdout"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:/usr/local/bin:/usr/bin"
+
+- name: Afficher un message si helm n'est pas trouvé
+  fail:
+    msg: "Helm n'est pas installé ou n'est pas dans le PATH. Veuillez l'installer."
+  when: helm_check.failed
