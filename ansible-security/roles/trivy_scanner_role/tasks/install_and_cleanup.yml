@@ -1,0 +1,159 @@
+# Fichier: roles/trivy_scanner_role/tasks/install_and_cleanup.yml
+
+# --- Nettoyage Préalable (Sécurité/Idempotence) ---
+
+- name: Supprimer les anciens fichiers de clés de Trivy (si existants)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/share/keyrings/trivy.gpg
+    - /etc/apt/trusted.gpg.d/trivy.gpg
+    - /etc/apt/sources.list.d/trivy.list
+  ignore_errors: yes
+  tags: trivy_install
+
+- name: Désinstaller Trivy si présent (pour assurer une installation propre)
+  ansible.builtin.apt:
+    name: trivy
+    state: absent
+    purge: yes
+  ignore_errors: yes
+  tags: trivy_install
+
+- name: Vérifier et libérer les locks APT (Phase 1 - Fichiers de lock)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/apt/lists/lock
+    - /var/lib/dpkg/lock
+    - /var/lib/dpkg/lock-frontend
+    - /var/cache/apt/archives/lock
+  ignore_errors: yes
+  tags: trivy_install
+
+- name: Tuer les processus APT bloquants si nécessaire
+  ansible.builtin.shell: |
+    # Tuer les processus apt et dpkg bloquants
+    pkill -f "^apt*" || true
+    pkill -f "^dpkg*" || true
+    # Forcer la libération des processus en attente
+    fuser -k /var/lib/dpkg/lock || true
+    fuser -k /var/lib/dpkg/lock-frontend || true
+    fuser -k /var/lib/apt/lists/lock || true
+    fuser -k /var/cache/apt/archives/lock || true
+  ignore_errors: yes
+  changed_when: false
+  tags: trivy_install
+
+- name: Réparer les packages dpkg endommagés
+  ansible.builtin.command: dpkg --configure -a
+  ignore_errors: yes
+  changed_when: false
+  tags: trivy_install
+
+- name: Attendre que le système APT soit disponible
+  ansible.builtin.shell: |
+    # Attendre que tous les locks soient libérés
+    while fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+      echo "En attente de la libération du lock dpkg..."
+      sleep 2
+    done
+    while fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+      echo "En attente de la libération du lock apt lists..."
+      sleep 2
+    done
+    exit 0
+  changed_when: false
+  tags: trivy_install
+
+- name: Pause de sécurité pour s'assurer qu'APT est disponible
+  ansible.builtin.pause:
+    seconds: 3
+  tags: trivy_install
+
+- name: Clear APT lists cache
+  ansible.builtin.file:
+    path: /var/lib/apt/lists
+    state: absent
+  ignore_errors: yes
+  tags: trivy_install
+
+# --- Installation des Dépendances ---
+
+- name: Installer les dépendances (wget, gnupg, etc.)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+    force_apt_get: yes
+  loop:
+    - wget
+    - gnupg
+    - apt-transport-https
+    - software-properties-common
+  tags: trivy_install
+
+# --- Installation de Trivy ---
+
+- name: Télécharger la clé GPG de Trivy
+  ansible.builtin.get_url:
+    url: https://aquasecurity.github.io/trivy-repo/deb/public.key
+    dest: /tmp/trivy-key.gpg
+    timeout: 30
+  register: download_key
+  retries: 3
+  delay: 5
+  tags: trivy_install
+
+- name: Créer le répertoire keyrings pour APT
+  ansible.builtin.file:
+    path: /usr/share/keyrings
+    state: directory
+    mode: '0755'
+  tags: trivy_install
+
+- name: Installer la clé GPG de Trivy
+  ansible.builtin.command: gpg --dearmor -o /usr/share/keyrings/trivy-archive-keyring.gpg /tmp/trivy-key.gpg
+  args:
+    creates: /usr/share/keyrings/trivy-archive-keyring.gpg
+  tags: trivy_install
+
+- name: Configurer le dépôt APT de Trivy
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/trivy.list
+    content: |
+      deb [signed-by=/usr/share/keyrings/trivy-archive-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main
+    mode: '0644'
+  tags: trivy_install
+
+- name: Mettre à jour le cache apt après ajout du dépôt Trivy
+  ansible.builtin.apt:
+    update_cache: yes
+    force_apt_get: yes
+  tags: trivy_install
+
+- name: Installer Trivy
+  ansible.builtin.apt:
+    name: trivy
+    state: latest
+    force_apt_get: yes
+  tags: trivy_install
+
+- name: Vérifier l'installation de Trivy
+  ansible.builtin.command: trivy --version
+  register: trivy_version
+  changed_when: false
+  tags: trivy_install
+
+- name: Afficher la version de Trivy installée
+  ansible.builtin.debug:
+    msg: "Trivy installé avec succès : {{ trivy_version.stdout }}"
+  tags: trivy_install
+
+- name: Nettoyer les fichiers temporaires de clé de Trivy
+  ansible.builtin.file:
+    path: /tmp/trivy-key.gpg
+    state: absent
+  tags: trivy_install

@@ -1,2 +1,10 @@
----
-# tasks file for roles/trivy_scanner_role
+# Fichier: roles/trivy_scanner_role/tasks/main.yml
+
+- name: Phase 1 - Installation et Nettoyage APT
+  ansible.builtin.include_tasks: install_and_cleanup.yml
+
+- name: Phase 2 - Mise à jour de la base de données Trivy
+  ansible.builtin.include_tasks: update_db_and_prep.yml
+
+- name: Phase 3 - Exécution des Scans de Sécurité (Image, FS, Config)
+  ansible.builtin.include_tasks: execute_scans.yml

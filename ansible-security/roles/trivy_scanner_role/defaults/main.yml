@@ -1,2 +1,16 @@
----
-# defaults file for roles/trivy_scanner_role
+
+
+# --- Variables d'exécution Trivy ---
+trivy_scan_timeout_minutes: 20
+test_image: "nginx:1.20.0"
+
+# --- Chemins des Scans ---
+# Le chemin de base de ton projet sur la VM Ansible
+base_project_path: "{{ lookup('env', 'HOME') }}/devsecops-ansible-platforme"
+app_source_path: "{{ base_project_path }}/Ecart"
+
+# Cible spécifique pour le scan de dépendances (pom.xml)
+app_deps_target: "{{ app_source_path }}/pom.xml"
+
+# Cible spécifique pour le scan de configuration K8s
+k8s_config_target: "{{ app_source_path }}/deploymentservice.yml"

@@ -52,3 +52,16 @@
 
   roles:
     - polaris_role
+
+
+
+- name: 🔎 SCANNING DE VULNÉRABILITÉS AVEC TRIVY
+  hosts: localhost
+
+  become: yes 
+  connection: local
+  gather_facts: false
+  tags: trivy
+
+  roles:
+    - trivy_scanner_role

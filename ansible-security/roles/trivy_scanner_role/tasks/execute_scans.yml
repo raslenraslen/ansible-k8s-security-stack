@@ -1,0 +1,45 @@
+# Fichier: roles/trivy_scanner_role/tasks/execute_scans.yml
+
+# --- 1. Scan d'image Docker (Exemple) ---
+- name: Scan d'image Docker ({{ test_image }})
+  ansible.builtin.command:
+    cmd: "trivy image --format json --severity HIGH,CRITICAL --timeout {{ trivy_scan_timeout_minutes }}m {{ test_image }}"
+  register: image_scan_result
+  changed_when: false
+  become: no
+  tags: trivy_scan
+
+# --- 2. Scan des dépendances applicatives (pom.xml) ---
+- name: Scan des dépendances applicatives (FS Scan sur {{ app_deps_target }})
+  ansible.builtin.command:
+    cmd: "trivy fs --format json --severity HIGH,CRITICAL --timeout {{ trivy_scan_timeout_minutes }}m {{ app_deps_target }}"
+  register: app_deps_scan_result
+  changed_when: false
+  become: no
+  tags: trivy_scan
+
+# --- 3. Scan des Manifests Kubernetes (deploymentservice.yml) ---
+- name: Scan des manifests Kubernetes (Config Scan sur {{ k8s_config_target }})
+  ansible.builtin.command:
+    cmd: "trivy config --format json --severity HIGH,CRITICAL --timeout {{ trivy_scan_timeout_minutes }}m {{ k8s_config_target }}"
+  register: k8s_config_scan_result
+  changed_when: false
+  become: no
+  tags: trivy_scan
+
+# --- 4. Fusionner les résultats (Logique de reporting) ---
+- name: Fusionner les résultats des scans
+  ansible.builtin.set_fact:
+    all_scan_results: >-
+      {% set results = [] %}
+      # ... (Ta logique complexe de fusion ici, inchangée)
+      # ...
+      {{ results }}
+  tags: trivy_metrics_gen
+
+- name: Afficher les résultats du scan de configuration K8s (pour debug)
+  ansible.builtin.debug:
+    msg: "K8s Config Scan Output: {{ k8s_config_scan_result.stdout | default('N/A') }}"
+  when: k8s_config_scan_result is defined
+
+# Note: Toutes les sections Pushgateway sont exclues de ce rôle pour le moment.

@@ -1,0 +1,18 @@
+# Fichier: roles/trivy_scanner_role/tasks/update_db_and_prep.yml
+
+- name: Vérifier l'installation de Trivy
+  ansible.builtin.command: trivy --version
+  register: trivy_check
+  changed_when: false
+  tags: trivy_install
+
+- name: Nettoyer les fichiers temporaires de clé de Trivy
+  ansible.builtin.file:
+    path: /tmp/trivy-key.gpg
+    state: absent
+  tags: trivy_install
+
+- name: Mettre à jour la base de données Trivy
+  ansible.builtin.command: trivy image --download-db-only
+  when: trivy_check.rc == 0
+  tags: trivy_scan
