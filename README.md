@@ -9,6 +9,44 @@
 
 One Ansible playbook that adds five security layers to an existing Kubernetes cluster: admission policies, runtime threat detection, configuration audit, vulnerability scanning and secrets management. Each layer is a role with its own tag, so it can be deployed or re-run on its own.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    A["ansible-playbook<br/>site.yaml"]
+    subgraph K8s["Kubernetes cluster"]
+        direction TB
+        G["OPA Gatekeeper<br/>admission policies"]
+        F["Falco<br/>runtime detection"]
+        P["Polaris<br/>configuration audit"]
+    end
+    subgraph Node["Controller node"]
+        direction TB
+        V["HashiCorp Vault<br/>secrets, systemd"]
+        T["Trivy<br/>vulnerability scans"]
+    end
+    A --> G & F & P
+    A --> V & T
+    G -- "rejects" --> X["non-compliant<br/>manifests"]
+    F -- "alerts" --> S["Falcosidekick UI<br/>Discord"]
+    T -- "writes" --> R["JSON reports"]
+
+    classDef client fill:#8957e5,stroke:#a371f7,color:#ffffff,stroke-width:2px
+    classDef controller fill:#238636,stroke:#3fb950,color:#ffffff,stroke-width:2px
+    classDef network fill:#1f6feb,stroke:#58a6ff,color:#ffffff,stroke-width:2px
+    classDef app fill:#bd561d,stroke:#f0883e,color:#ffffff,stroke-width:2px
+    classDef deny fill:#da3633,stroke:#f85149,color:#ffffff,stroke-width:2px
+    class A client
+    class G,F,P,V,T controller
+    class S,R app
+    class X deny
+    style K8s fill:#1f6feb14,stroke:#1f6feb,stroke-width:2px
+    style Node fill:#8957e514,stroke:#8957e5,stroke-width:2px
+    linkStyle default stroke:#8b949e,stroke-width:2px
+```
+
+Three layers run inside the cluster; Vault and Trivy run on the controller node itself.
+
 ## What it deploys
 
 | Layer | Tool | What the role does | Tag |
