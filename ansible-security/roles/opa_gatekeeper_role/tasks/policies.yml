@@ -1,5 +1,6 @@
 ---
-# Définition des variables pour les chemins de fichiers
+# Each policy: apply the template and the constraint, then prove it works by
+# applying a manifest that must be rejected.
 - name: Set variables for file paths
   ansible.builtin.set_fact:
     nodeport_template: "{{ role_path }}/files/policies/nodeport/k8sservicenodeportforbidden.yaml"
@@ -25,6 +26,16 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ nodeport_constraint }}"
+  register: constraint_apply
+  until: constraint_apply is succeeded
+  retries: 10
+  delay: 3
+
+- name: Wait for the forbid-nodeport-services constraint
+  ansible.builtin.include_tasks: wait_enforced.yml
+  vars:
+    constraint_kind: K8sServiceNodePortForbidden
+    constraint_name: forbid-nodeport-services
 
 - name: Test NodePort Constraint (Expected to fail)
   kubernetes.core.k8s:
@@ -57,6 +68,16 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ latest_image_constraint }}"
+  register: constraint_apply
+  until: constraint_apply is succeeded
+  retries: 10
+  delay: 3
+
+- name: Wait for the no-latest-images constraint
+  ansible.builtin.include_tasks: wait_enforced.yml
+  vars:
+    constraint_kind: K8sDenyImageLatest
+    constraint_name: no-latest-images
 
 - name: Test Latest Image Constraint (Expected to fail)
   kubernetes.core.k8s:
@@ -89,6 +110,16 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ no_privileged_constraint }}"
+  register: constraint_apply
+  until: constraint_apply is succeeded
+  retries: 10
+  delay: 3
+
+- name: Wait for the no-privileged-containers constraint
+  ansible.builtin.include_tasks: wait_enforced.yml
+  vars:
+    constraint_kind: K8sContainerNoPrivileged
+    constraint_name: no-privileged-containers
 
 - name: Test No Privileged Containers Constraint (Expected to fail)
   kubernetes.core.k8s:
@@ -121,6 +152,16 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ limits_constraint }}"
+  register: constraint_apply
+  until: constraint_apply is succeeded
+  retries: 10
+  delay: 3
+
+- name: Wait for the require-limits constraint
+  ansible.builtin.include_tasks: wait_enforced.yml
+  vars:
+    constraint_kind: K8sRequiredResources
+    constraint_name: require-limits
 
 - name: Clean up any existing test pod first
   kubernetes.core.k8s:

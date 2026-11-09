@@ -15,11 +15,11 @@ spec:
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
           endswith(container.image, ":latest")
-          msg := sprintf("L'image '%s' utilise le tag ':latest' qui est interdit", [container.image])
+          msg := sprintf("Image '%s' uses the ':latest' tag, which is forbidden", [container.image])
         }
 
         violation[{"msg": msg}] {
           container := input.review.object.spec.template.spec.containers[_]
           endswith(container.image, ":latest")
-          msg := sprintf("L'image '%s' utilise le tag ':latest' qui est interdit", [container.image])
+          msg := sprintf("Image '%s' uses the ':latest' tag, which is forbidden", [container.image])
         }

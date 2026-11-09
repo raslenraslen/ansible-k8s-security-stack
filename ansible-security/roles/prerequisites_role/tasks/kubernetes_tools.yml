@@ -11,7 +11,7 @@
   ignore_errors: yes
 
 - name: Install kubectl via snap (only if not already installed)
-  ansible.builtin.snap:
+  community.general.snap:
     name: kubectl
     classic: yes
     state: present

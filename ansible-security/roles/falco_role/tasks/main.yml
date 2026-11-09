@@ -1,15 +1,15 @@
 ---
-- name: Vérifier les prérequis
+- name: Check prerequisites
   ansible.builtin.include_tasks: prerequisites.yml
 
-- name: Créer le namespace
+- name: Create the namespace
   ansible.builtin.include_tasks: namespace.yml
 
-- name: Installer Falco avec Helm
+- name: Install Falco with Helm
   ansible.builtin.include_tasks: install_falco.yml
 
-- name: Vérifier les services
+- name: Check the services
   ansible.builtin.include_tasks: services_check.yml
 
-- name: Configurer le port-forward
+- name: Start the UI port-forward
   ansible.builtin.include_tasks: port_forward.yml

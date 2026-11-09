@@ -53,17 +53,11 @@
     name: docker-compose
     state: present
 
-- name: Add current user to docker group
+- name: Add the user running Ansible to the docker group
   ansible.builtin.user:
-    name: raslen
+    name: "{{ lookup('env', 'USER') }}"
     groups: docker
     append: yes
-
-- name: Set permissive permissions on docker socket
-  ansible.builtin.file:
-    path: /var/run/docker.sock
-    mode: '0666'
-    state: file
 
 - name: Restart Docker service
   ansible.builtin.systemd:

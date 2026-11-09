@@ -1,7 +1,7 @@
-# Variables de configuration de Polaris
+---
 
 polaris_namespace: "polaris"
 polaris_helm_repo_name: "fairwinds-stable"
 polaris_helm_repo_url: "https://charts.fairwinds.com/stable"
-polaris_ui_port: 8080                               # Port local pour le port-forward
-polaris_cluster_context: "kubernetes-admin@kubernetes" # Contexte Kubeadm
+polaris_ui_port: 8080                                  # local port of the port-forward
+polaris_cluster_context: "kubernetes-admin@kubernetes"  # default kubeadm context

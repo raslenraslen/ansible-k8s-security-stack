@@ -1,23 +1,3 @@
-# =============== Fichiers Terraform ===============
-# Ignore les fichiers d'état locaux de Terraform. C'est le plus important.
-# Ils peuvent contenir des secrets !
-*.tfstate
-*.tfstate.backup
-
-# Ignore le dossier .terraform où sont téléchargés les providers.
-# Il est généré automatiquement par 'terraform init'.
-.terraform/
-
-# Ignore le fichier de lock des dépendances.
-# Il peut être spécifique à un OS.
-.terraform.lock.hcl
-
-# Ignore les logs de crash de Terraform.
-crash.log
-
-# Ignore les fichiers de plan, ils peuvent aussi contenir des secrets.
-*.tfplan
-
-# Ignore les fichiers de variables, car ils contiennent souvent des mots de passe.
-*.tfvars
-*.tfvars.json
+# Vault unseal key and root token, written by the vault role
+ansible-security/.vault-init.json
+*.retry

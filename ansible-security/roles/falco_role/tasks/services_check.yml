@@ -1,5 +1,5 @@
 ---
-- name: Obtenir les services Falco dans le namespace
+- name: List the Falco services
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Service
@@ -8,8 +8,8 @@
       - app.kubernetes.io/instance=falco
   register: falco_services
 
-- name: Afficher la liste des services Falco
-  debug:
-    msg: "Services Falco dans le namespace {{ falco_namespace }} : {{ item.metadata.name }}"
+- name: Show the Falco services
+  ansible.builtin.debug:
+    msg: "Service in {{ falco_namespace }}: {{ item.metadata.name }}"
   loop: "{{ falco_services.resources }}"
   when: falco_services.resources is defined and falco_services.resources | length > 0

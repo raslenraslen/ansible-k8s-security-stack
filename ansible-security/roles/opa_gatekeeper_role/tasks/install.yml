@@ -1,29 +1,22 @@
 ---
-- name: Apply Gatekeeper manifest from official URL
+- name: Apply the Gatekeeper {{ gatekeeper_version }} manifest
   ansible.builtin.command: >
-    kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/release-3.14/deploy/gatekeeper.yaml
+    kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/{{ gatekeeper_version }}/deploy/gatekeeper.yaml
   register: gatekeeper_apply
   changed_when: "'configured' in gatekeeper_apply.stdout or 'created' in gatekeeper_apply.stdout"
 
-- name: Wait for Gatekeeper webhooks to be ready (optional, for stability)
-  ansible.builtin.pause:
-    seconds: 10
+# The admission webhook must be up before any ConstraintTemplate is applied.
+- name: Wait for the Gatekeeper deployments to be available
+  ansible.builtin.command: >
+    kubectl wait --for=condition=Available deployment --all
+    -n gatekeeper-system --timeout=180s
+  changed_when: false
 
 - name: Get Gatekeeper pods
   ansible.builtin.command: kubectl get pods -n gatekeeper-system
   register: get_pods_output
   changed_when: false
 
-- name: Get Gatekeeper deployments
-  ansible.builtin.command: kubectl get deployments -n gatekeeper-system
-  register: get_deployments_output
-  changed_when: false
-
-- name: Show Gatekeeper status
+- name: Show Gatekeeper pods
   ansible.builtin.debug:
-    msg: |
-      ========= Gatekeeper Pods =========
-      {{ get_pods_output.stdout }}
-
-      ====== Gatekeeper Deployments =====
-      {{ get_deployments_output.stdout }}
+    msg: "{{ get_pods_output.stdout_lines }}"

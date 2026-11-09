@@ -1,67 +1,55 @@
 ---
-- name: 🛠️ PRÉPARATION DE L'ENVIRONNEMENT
+# Run from the Kubernetes controller node: every play except Vault targets
+# localhost and uses the kubeconfig of the user running ansible-playbook.
+
+- name: Prepare the control node
   hosts: localhost
-  become: yes
+  connection: local
+  become: true
   gather_facts: true
-  tags: prerequisites  
-  
+  tags: prerequisites
   roles:
     - prerequisites_role
 
-- name: 🔐 DÉPLOIEMENT HASHICORP VAULT
+- name: Deploy HashiCorp Vault
   hosts: controllers
-  become: yes
+  become: true
   gather_facts: true
-  vars:
-    vault_force_reinit: false
   environment:
     SHELL: /bin/bash
-  tags: vault  
-  
+  tags: vault
   roles:
     - vault_role
 
-- name: 🛡️ DÉPLOIEMENT OPA GATEKEEPER
+- name: Deploy OPA Gatekeeper and its policies
   hosts: localhost
   connection: local
   gather_facts: false
-  tags: gatekeeper  
-  
+  tags: gatekeeper
   roles:
     - opa_gatekeeper_role
 
-
-
-
-- name: 🔍 DÉPLOIEMENT FALCO AVEC FALCOSIDEKICK
+- name: Deploy Falco with Falcosidekick
   hosts: localhost
   connection: local
   gather_facts: true
   tags: falco
-  
   roles:
     - falco_role
 
-
-
-- name: ⭐ AUDIT DE CONFIGURATION K8S AVEC POLARIS
+- name: Deploy the Polaris configuration audit
   hosts: localhost
   connection: local
   gather_facts: false
   tags: polaris
-
   roles:
     - polaris_role
 
-
-
-- name: 🔎 SCANNING DE VULNÉRABILITÉS AVEC TRIVY
+- name: Scan for vulnerabilities with Trivy
   hosts: localhost
-
-  become: yes 
   connection: local
-  gather_facts: false
+  become: true
+  gather_facts: true  # the apt repository line needs ansible_distribution_release
   tags: trivy
-
   roles:
     - trivy_scanner_role

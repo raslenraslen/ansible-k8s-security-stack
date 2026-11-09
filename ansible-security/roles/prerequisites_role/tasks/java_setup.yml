@@ -4,9 +4,9 @@
     name: openjdk-17-jre-headless
     state: present
 
-- name: Set JAVA_HOME for raslen user
+- name: Set JAVA_HOME for the user running Ansible
   ansible.builtin.lineinfile:
-    path: "/home/raslen/.bashrc"
+    path: "{{ lookup('env', 'HOME') }}/.bashrc"
     line: 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64'
     create: true
     insertafter: EOF

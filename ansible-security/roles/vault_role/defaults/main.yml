@@ -1,2 +1,17 @@
 ---
-# defaults file for roles/vault_role
+vault_version: "1.15.4"
+vault_config_path: "/etc/vault.d"
+vault_data_path: "/opt/vault/data"
+vault_user: "vault"
+vault_group: "vault"
+vault_address: "http://{{ ansible_host }}:8200"
+vault_home_dir: "/home/{{ ansible_user }}"
+
+# true wipes all Vault data and initializes a new Vault.
+vault_force_reinit: false
+
+# Needed to unseal a Vault initialized by an earlier run: -e unseal_key_extra_var=<key>
+effective_unseal_key: "{{ unseal_key_extra_var | default('') }}"
+
+# Where the init output (unseal key and root token) is saved on the machine running Ansible.
+vault_init_file: "{{ playbook_dir }}/.vault-init.json"

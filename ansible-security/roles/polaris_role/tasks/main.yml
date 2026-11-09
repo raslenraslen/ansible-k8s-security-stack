@@ -1,8 +1,5 @@
-# Fichier: roles/polaris_role/tasks/main.yml
-
-# --- Phase 1 : Préparation du Répertoire Helm ---
+---
 - name: 1. Remove potentially broken old Helm repo reference
-  # Assure la propreté avant l'ajout, en cas de changement d'URL
   ansible.builtin.command: helm repo remove {{ polaris_helm_repo_name }}
   ignore_errors: true
   changed_when: false
@@ -17,7 +14,6 @@
   ansible.builtin.command: helm repo update
   changed_when: true
 
-# --- Phase 2 : Déploiement de Polaris ---
 - name: 4. Ensure the Polaris Namespace exists
   kubernetes.core.k8s:
     name: "{{ polaris_namespace }}"
@@ -32,6 +28,8 @@
     namespace: "{{ polaris_namespace }}"
     create_namespace: false
     state: present
+    wait: true
+    wait_timeout: "10m"
     release_values:
       dashboard:
         replicas: 1
@@ -39,10 +37,8 @@
         minimumStabilitySeconds: 60
   register: polaris_helm_install
 
-# --- Phase 3 : Configuration de l'Accès UI (Port-Forward) ---
 - name: 6. Start port-forward for Polaris UI (port {{ polaris_ui_port }}:80) in background
   ansible.builtin.shell: |
-    # Utilisation explicite du contexte Kubeadm
     kubectl --context {{ polaris_cluster_context }} port-forward --address 0.0.0.0 svc/polaris-dashboard -n {{ polaris_namespace }} {{ polaris_ui_port }}:80 > /dev/null 2>&1 &
     echo $! > /tmp/polaris_ui_pf_pid
   args:
@@ -59,4 +55,4 @@
     msg: |
       Polaris Dashboard is running!
       Health Score for your cluster is now live at: http://127.0.0.1:{{ polaris_ui_port }}/
-      (Port-forward is running on PID: {{ pf_polaris_output.stdout }})
+      (available while the kubectl port-forward process runs)

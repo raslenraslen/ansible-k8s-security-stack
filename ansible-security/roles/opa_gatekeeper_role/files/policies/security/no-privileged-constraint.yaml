@@ -4,3 +4,10 @@ metadata:
   name: no-privileged-containers
 spec:
   enforcementAction: deny
+  match:
+    excludedNamespaces:
+      - kube-system
+      - kube-flannel
+      - gatekeeper-system
+      - falco
+      - polaris

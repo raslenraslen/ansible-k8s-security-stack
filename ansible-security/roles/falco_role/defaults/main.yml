@@ -1,6 +1,10 @@
 ---
-# Default variables for Falco deployment
 falco_namespace: falco
-discord_webhook_url: "REDACTED"
-falcosidekick_custom_fields: "environment:production\\,datacenter:paris"
+
+# Discord alerts are sent only when a webhook URL is given. Never commit it:
+# pass it at run time with -e discord_webhook_url=<url>
+discord_webhook_url: ""
+falcosidekick_custom_fields: "environment:production,datacenter:paris"
+
+# IP printed in the Falcosidekick UI link (the node running the port-forward).
 falcosidekick_ui_ip: "192.168.216.142"

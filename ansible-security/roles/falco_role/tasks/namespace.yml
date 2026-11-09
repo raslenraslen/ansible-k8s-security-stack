@@ -1,5 +1,5 @@
 ---
-- name: Créer le namespace Falco si ce n'est pas déjà fait
+- name: Create the Falco namespace
   kubernetes.core.k8s:
     name: "{{ falco_namespace }}"
     api_version: v1

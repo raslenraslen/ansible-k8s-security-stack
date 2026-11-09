@@ -1,0 +1,16 @@
+---
+# Gatekeeper loads a new constraint into its webhook pods asynchronously:
+# wait until every pod reports it as enforced before testing it.
+- name: Wait until {{ constraint_kind }}/{{ constraint_name }} is enforced
+  kubernetes.core.k8s_info:
+    api_version: constraints.gatekeeper.sh/v1beta1
+    kind: "{{ constraint_kind }}"
+    name: "{{ constraint_name }}"
+  register: constraint_info
+  until: >-
+    constraint_info.resources | length > 0
+    and (constraint_info.resources[0].status.byPod | default([]) | length) > 0
+    and (constraint_info.resources[0].status.byPod | rejectattr('enforced', 'defined') | list | length) == 0
+    and (constraint_info.resources[0].status.byPod | selectattr('enforced', 'defined') | rejectattr('enforced') | list | length) == 0
+  retries: 20
+  delay: 3

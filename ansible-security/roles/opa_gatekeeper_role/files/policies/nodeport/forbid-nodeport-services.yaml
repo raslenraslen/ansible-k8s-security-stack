@@ -4,3 +4,10 @@ metadata:
   name: forbid-nodeport-services
 spec:
   enforcementAction: deny
+  match:
+    excludedNamespaces:
+      - kube-system
+      - kube-flannel
+      - gatekeeper-system
+      - falco
+      - polaris

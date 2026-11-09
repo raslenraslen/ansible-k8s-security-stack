@@ -1,96 +1,53 @@
-# Fichier: roles/trivy_scanner_role/tasks/install_and_cleanup.yml
-
-# --- Nettoyage Préalable (Sécurité/Idempotence) ---
-
-- name: Supprimer les anciens fichiers de clés de Trivy (si existants)
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /usr/share/keyrings/trivy.gpg
-    - /etc/apt/trusted.gpg.d/trivy.gpg
-    - /etc/apt/sources.list.d/trivy.list
-  ignore_errors: yes
-  tags: trivy_install
-
-- name: Désinstaller Trivy si présent (pour assurer une installation propre)
-  ansible.builtin.apt:
-    name: trivy
-    state: absent
-    purge: yes
-  ignore_errors: yes
-  tags: trivy_install
-
-- name: Vérifier et libérer les locks APT
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /var/lib/apt/lists/lock
-    - /var/lib/dpkg/lock
-    - /var/lib/dpkg/lock-frontend
-    - /var/cache/apt/archives/lock
-  ignore_errors: yes
-  tags: trivy_install
-
-- name: Réparer les packages dpkg endommagés
-  ansible.builtin.command: dpkg --configure -a
-  ignore_errors: yes
-  changed_when: false
-  tags: trivy_install
-
-# --- Installation des Dépendances ---
-
-- name: Installer les dépendances
+---
+- name: Install Trivy dependencies
   ansible.builtin.apt:
     name:
       - wget
       - gnupg
       - software-properties-common
     state: present
-    update_cache: yes
+    update_cache: true
   tags: trivy_install
 
-# --- Installation de Trivy ---
-
-- name: Télécharger la clé GPG de Trivy
+- name: Download the Trivy repository key
   ansible.builtin.get_url:
     url: https://aquasecurity.github.io/trivy-repo/deb/public.key
     dest: /tmp/trivy-key.gpg
+    mode: "0644"
   tags: trivy_install
 
-- name: Ajouter la clé GPG de Trivy
+- name: Add the Trivy repository key
   ansible.builtin.apt_key:
     file: /tmp/trivy-key.gpg
     state: present
   tags: trivy_install
 
-- name: Ajouter le dépôt Trivy
+- name: Add the Trivy repository
   ansible.builtin.apt_repository:
     repo: "deb https://aquasecurity.github.io/trivy-repo/deb {{ ansible_distribution_release }} main"
     state: present
     filename: trivy
   tags: trivy_install
 
-- name: Installer Trivy
+- name: Install Trivy
   ansible.builtin.apt:
     name: trivy
     state: latest
-    update_cache: yes
+    update_cache: true
   tags: trivy_install
 
-- name: Vérifier l'installation de Trivy
+- name: Check the Trivy version
   ansible.builtin.command: trivy --version
   register: trivy_version
   changed_when: false
   tags: trivy_install
 
-- name: Afficher la version de Trivy installée
+- name: Show the Trivy version
   ansible.builtin.debug:
-    msg: "Trivy installé avec succès : {{ trivy_version.stdout }}"
+    msg: "{{ trivy_version.stdout_lines | first }}"
   tags: trivy_install
 
-- name: Nettoyer les fichiers temporaires
+- name: Remove the downloaded key file
   ansible.builtin.file:
     path: /tmp/trivy-key.gpg
     state: absent
